@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRJ ERP - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-lg p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold">KRJ ERP</h1>
+            <p class="text-gray-500">Jewellery Management System</p>
+        </div>
+        
+        <div class="mb-4">
+            <input type="email" id="email" class="w-full p-3 border rounded-lg" placeholder="Email">
+        </div>
+        <div class="mb-6">
+            <input type="password" id="password" class="w-full p-3 border rounded-lg" placeholder="Password">
+        </div>
+        <button id="loginBtn" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">Login</button>
+        
+        <div id="message" class="mt-4 text-center text-red-500 hidden"></div>
+    </div>
+
+    <script>
+        // Simple login - no database yet
+        document.getElementById('loginBtn').addEventListener('click', function() {
+            var email = document.getElementById('email').value;
+            var password = document.getElementById('password').value;
+            var messageDiv = document.getElementById('message');
+            
+            if (email === 'admin@krj.com' && password === 'admin123') {
+                messageDiv.className = 'mt-4 text-center text-green-500';
+                messageDiv.textContent = 'Login successful! Redirecting...';
+                messageDiv.classList.remove('hidden');
+                
+                // Store login info
+                localStorage.setItem('krj_user', JSON.stringify({
+                    email: email,
+                    name: 'Administrator',
+                    role: 'admin'
+                }));
+                
+                setTimeout(function() {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } else {
+                messageDiv.className = 'mt-4 text-center text-red-500';
+                messageDiv.textContent = 'Invalid email or password';
+                messageDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
