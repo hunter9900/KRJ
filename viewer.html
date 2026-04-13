@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>KRJ - 3D Jewellery Viewer</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 20px;
+            z-index: 100;
+            color: white;
+            pointer-events: auto;
+        }
+        .metal-btn {
+            padding: 8px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-weight: 500;
+        }
+        .metal-btn.active {
+            ring: 2px solid white;
+            transform: scale(1.02);
+        }
+        .btn-icon {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-icon:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        @media (max-width: 768px) {
+            #controls { padding: 12px; bottom: 10px; left: 10px; right: 10px; }
+            .metal-btn { padding: 6px 12px; font-size: 12px; }
+            .btn-icon { padding: 6px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h2 style="margin: 0; font-size: 18px;">💎 <span id="productName">Jewellery Piece</span></h2>
+                <p style="margin: 5px 0 0; font-size: 14px; opacity: 0.8;">Price: ₹<span id="productPrice">0</span></p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="autoRotateBtn" class="btn-icon">🔄 Auto</button>
+                <button id="resetViewBtn" class="btn-icon">🎯 Reset</button>
+                <button id="backBtn" class="btn-icon" style="background: #6b21a5;">← Back</button>
+            </div>
+        </div>
+        
+        <div style="margin-top: 12px;">
+            <p style="margin: 0 0 8px 0; font-size: 13px;">Metal Type:</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button data-metal="yellow" data-color="#ffd700" data-multiplier="1.0" class="metal-btn" style="background: #ffd700; color: #000;">🟡 Yellow Gold</button>
+                <button data-metal="white" data-color="#e8e8e8" data-multiplier="1.05" class="metal-btn" style="background: #e8e8e8; color: #000;">⚪ White Gold</button>
+                <button data-metal="rose" data-color="#e8a87c" data-multiplier="1.08" class="metal-btn" style="background: #e8a87c; color: #000;">🌹 Rose Gold</button>
+                <button data-metal="platinum" data-color="#b8b8c8" data-multiplier="1.5" class="metal-btn" style="background: #b8b8c8; color: #000;">💎 Platinum</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // Get product info from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+        const productName = urlParams.get('name') || 'Diamond Ring';
+        const basePrice = parseFloat(urlParams.get('price')) || 35000;
+        
+        document.getElementById('productName').innerText = productName;
+        document.getElementById('productPrice').innerText = basePrice.toLocaleString();
+        
+        let scene, camera, renderer, controls, ringModel = null;
+        let currentColor = '#ffd700';
+        let currentMultiplier = 1.0;
+        
+        // Initialize 3D scene
+        function init() {
+            const container = document.body;
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a2a);
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(2, 1.5, 3);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.5;
+            controls.enableZoom = true;
+            controls.enablePan = false;
+            controls.target.set(0, 0, 0);
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404060);
+            scene.add(ambientLight);
+            
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+            mainLight.position.set(2, 5, 3);
+            mainLight.castShadow = true;
+            scene.add(mainLight);
+            
+            const fillLight = new THREE.PointLight(0x4466cc, 0.4);
+            fillLight.position.set(0, -2, 0);
+            scene.add(fillLight);
+            
+            const rimLight = new THREE.PointLight(0xffaa66, 0.5);
+            rimLight.position.set(-1, 1, -2);
+            scene.add(rimLight);
+            
+            const backLight = new THREE.PointLight(0x66aaff, 0.3);
+            backLight.position.set(0, 1, -2.5);
+            scene.add(backLight);
+            
+            // Add floor reflection
+            const gridHelper = new THREE.GridHelper(5, 20, 0x88aaff, 0x335588);
+            gridHelper.position.y = -0.8;
+            gridHelper.material.transparent = true;
+            gridHelper.material.opacity = 0.3;
+            scene.add(gridHelper);
+            
+            // Create the ring
+            createRing();
+            
+            // Start animation
+            animate();
+            window.addEventListener('resize', onResize);
+        }
+        
+        function createRing() {
+            if (ringModel) scene.remove(ringModel);
+            
+            const group = new THREE.Group();
+            
+            // Main band
+            const bandGeo = new THREE.TorusGeometry(0.85, 0.12, 64, 128);
+            const bandMat = new THREE.MeshStandardMaterial({ color: currentColor, metalness: 0.92, roughness: 0.25 });
+            const band = new THREE.Mesh(bandGeo, bandMat);
+            band.rotation.x = Math.PI / 2;
+            group.add(band);
+            
+            // Center diamond (octahedron looks like a diamond)
+            const diamondGeo = new THREE.OctahedronGeometry(0.28);
+            const diamondMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, metalness: 0.1, roughness: 0.15, emissive: 0x224466 });
+            const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+            diamond.position.y = 0.18;
+            group.add(diamond);
+            
+            // Small diamonds around
+            const smallGeo = new THREE.SphereGeometry(0.07, 16, 16);
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const small = new THREE.Mesh(smallGeo, new THREE.MeshStandardMaterial({ color: 0xcceeff, metalness: 0.2, roughness: 0.1 }));
+                small.position.set(Math.cos(angle) * 0.72, 0.1, Math.sin(angle) * 0.72);
+                group.add(small);
+            }
+            
+            // Side details
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const detail = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.05, 8, 8),
+                    new THREE.MeshStandardMaterial({ color: currentColor, metalness: 0.95, roughness: 0.2 })
+                );
+                detail.position.set(Math.cos(angle) * 1.0, -0.12, Math.sin(angle) * 1.0);
+                group.add(detail);
+            }
+            
+            scene.add(group);
+            ringModel = group;
+        }
+        
+        function updateMetalColor(color, multiplier, metalName) {
+            if (!ringModel) return;
+            
+            currentColor = color;
+            currentMultiplier = multiplier;
+            
+            // Update metal parts
+            ringModel.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    // Don't change diamond/stones colors
+                    if (child.material.color.getHex() !== 0xaaddff && 
+                        child.material.color.getHex() !== 0xcceeff) {
+                        child.material.color.set(color);
+                    }
+                }
+            });
+            
+            // Update price
+            const newPrice = Math.round(basePrice * multiplier);
+            document.getElementById('productPrice').innerText = newPrice.toLocaleString();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+        
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Event listeners
+        document.querySelectorAll('.metal-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const color = btn.getAttribute('data-color');
+                const multiplier = parseFloat(btn.getAttribute('data-multiplier'));
+                const metalName = btn.innerText;
+                
+                updateMetalColor(color, multiplier, metalName);
+                
+                document.querySelectorAll('.metal-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+        
+        document.getElementById('autoRotateBtn').addEventListener('click', () => {
+            controls.autoRotate = !controls.autoRotate;
+            document.getElementById('autoRotateBtn').innerHTML = controls.autoRotate ? '⏸️ Stop' : '🔄 Auto';
+        });
+        
+        document.getElementById('resetViewBtn').addEventListener('click', () => {
+            camera.position.set(2, 1.5, 3);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        });
+        
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = 'sales-dashboard.html';
+        });
+        
+        // Start
+        init();
+    </script>
+</body>
+</html>
