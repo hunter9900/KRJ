@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRJ - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold">💍 KRJ ERP</h1>
+            <p class="text-gray-500 mt-2">Jewellery Management System</p>
+        </div>
+        
+        <div class="mb-4">
+            <input type="email" id="email" class="w-full p-3 border rounded-lg" placeholder="Email">
+        </div>
+        <div class="mb-6">
+            <input type="password" id="password" class="w-full p-3 border rounded-lg" placeholder="Password">
+        </div>
+        <button id="loginBtn" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold">Login</button>
+        
+        <div id="errorMsg" class="mt-4 text-red-500 text-center hidden"></div>
+        
+        <div class="mt-6 text-center text-sm text-gray-500">
+            <p>Demo: admin@krj.com / admin123</p>
+            <p>Sales: sarah@krj.com / sales123</p>
+        </div>
+    </div>
+
+    <script>
+        const SB_URL = 'https://llngjwyqyfppccdcwzgn.supabase.co';
+        const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsbmdqd3lxeWZwcGNjZGN3emduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTkyNTIsImV4cCI6MjA5MTQ5NTI1Mn0.s-YW4LcFcSizuuXbZ9PUAUPqoY-07fs9h03GQatdrMA';
+        
+        const sbClient = window.supabase.createClient(SB_URL, SB_ANON_KEY);
+        
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const { data, error } = await sbClient
+                .from('users')
+                .select('*')
+                .eq('email', email)
+                .eq('password', password);
+            
+            if (error || !data || data.length === 0) {
+                document.getElementById('errorMsg').textContent = 'Invalid credentials';
+                document.getElementById('errorMsg').classList.remove('hidden');
+                return;
+            }
+            
+            const user = data[0];
+            localStorage.setItem('krj_user', JSON.stringify({
+                id: user.id,
+                email: user.email,
+                name: user.full_name,
+                role: user.role
+            }));
+            
+            if (user.role === 'admin') {
+                window.location.href = 'dashboard.html';
+            } else {
+                window.location.href = 'sales.html';
+            }
+        });
+    </script>
+</body>
+</html>
