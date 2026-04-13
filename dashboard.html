@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRJ ERP - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold">KRJ ERP</h1>
+                <p id="userInfo" class="text-gray-600 mt-1">Loading...</p>
+            </div>
+            <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Logout</button>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-2xl mb-2">📦</div>
+                <p class="text-gray-500 text-sm">Total Orders</p>
+                <p id="totalOrders" class="text-3xl font-bold">0</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-2xl mb-2">💰</div>
+                <p class="text-gray-500 text-sm">Revenue</p>
+                <p id="totalRevenue" class="text-3xl font-bold">₹0</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-2xl mb-2">💍</div>
+                <p class="text-gray-500 text-sm">Products</p>
+                <p id="totalProducts" class="text-3xl font-bold">0</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-2xl mb-2">👥</div>
+                <p class="text-gray-500 text-sm">Clients</p>
+                <p id="totalClients" class="text-3xl font-bold">0</p>
+            </div>
+        </div>
+        
+        <!-- Navigation Tabs -->
+        <div class="flex border-b mb-6">
+            <button id="tabProducts" class="px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600">Products</button>
+            <button id="tabOrders" class="px-4 py-2 font-semibold text-gray-600">Orders</button>
+            <button id="tabClients" class="px-4 py-2 font-semibold text-gray-600">Clients</button>
+            <button id="tabMetal" class="px-4 py-2 font-semibold text-gray-600">Metal Accounts</button>
+        </div>
+        
+        <!-- Products Section -->
+        <div id="productsSection" class="bg-white rounded-lg shadow">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">Product Catalogue</h2>
+                <button id="addProductBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">+ Add Product</button>
+            </div>
+            <div class="p-6">
+                <div id="productsList" class="space-y-3">
+                    Loading products...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Orders Section -->
+        <div id="ordersSection" class="bg-white rounded-lg shadow hidden">
+            <div class="p-6 border-b">
+                <h2 class="text-xl font-bold">Orders</h2>
+            </div>
+            <div class="p-6">
+                <div id="ordersList" class="space-y-3">
+                    Loading orders...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Clients Section -->
+        <div id="clientsSection" class="bg-white rounded-lg shadow hidden">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">Clients</h2>
+                <button id="addClientBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">+ Add Client</button>
+            </div>
+            <div class="p-6">
+                <div id="clientsList" class="space-y-3">
+                    Loading clients...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Metal Accounts Section -->
+        <div id="metalSection" class="bg-white rounded-lg shadow hidden">
+            <div class="p-6 border-b">
+                <h2 class="text-xl font-bold">Metal Accounts (Fine Gold in grams)</h2>
+            </div>
+            <div class="p-6">
+                <div id="metalList" class="space-y-3">
+                    Loading metal accounts...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Product Modal -->
+    <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Add New Product</h3>
+            <input type="text" id="productName" placeholder="Product Name" class="w-full p-2 border rounded mb-3">
+            <input type="text" id="productSku" placeholder="SKU (e.g., RING-001)" class="w-full p-2 border rounded mb-3">
+            <select id="productCategory" class="w-full p-2 border rounded mb-3">
+                <option value="Ring">Ring</option>
+                <option value="Necklace">Necklace</option>
+                <option value="Earrings">Earrings</option>
+                <option value="Bracelet">Bracelet</option>
+                <option value="Pendant">Pendant</option>
+            </select>
+            <input type="number" id="productPrice" placeholder="Price (₹)" class="w-full p-2 border rounded mb-3">
+            <input type="number" id="productStock" placeholder="Stock Quantity" class="w-full p-2 border rounded mb-3">
+            <div class="flex gap-3">
+                <button id="saveProductBtn" class="bg-blue-600 text-white px-4 py-2 rounded flex-1">Save</button>
+                <button id="cancelProductBtn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded flex-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://llngjwyqyfppccdcwzgn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsbmdqd3lxeWZwcGNjZGN3emduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTkyNTIsImV4cCI6MjA5MTQ5NTI1Mn0.s-YW4LcFcSizuuXbZ9PUAUPqoY-07fs9h03GQatdrMA';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let currentUser = null;
+        
+        // Check authentication
+        async function checkAuth() {
+            const userJson = localStorage.getItem('krj_user');
+            if (!userJson) {
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = JSON.parse(userJson);
+            document.getElementById('userInfo').innerHTML = 'Welcome, ' + currentUser.name + ' | ' + currentUser.role;
+            loadDashboard();
+        }
+        
+        async function loadDashboard() {
+            loadProducts();
+            loadOrders();
+            loadClients();
+            loadMetalAccounts();
+            loadStats();
+        }
+        
+        async function loadProducts() {
+            const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+            const container = document.getElementById('productsList');
+            if (error) { container.innerHTML = '<p class="text-red-500">Error loading products</p>'; return; }
+            if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No products yet. Click "Add Product" to get started.</p>'; return; }
+            container.innerHTML = data.map(product => `
+                <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold">${product.name}</p>
+                        <p class="text-sm text-gray-500">${product.sku} | ${product.category} | Stock: ${product.stock_quantity}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-lg">₹${Number(product.price).toLocaleString()}</p>
+                        <button onclick="deleteProduct(${product.id})" class="text-red-500 text-sm mt-1">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function loadOrders() {
+            const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+            const container = document.getElementById('ordersList');
+            if (error) { container.innerHTML = '<p class="text-red-500">Error loading orders</p>'; return; }
+            if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No orders yet.</p>'; return; }
+            container.innerHTML = data.map(order => `
+                <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold">${order.order_number}</p>
+                        <p class="text-sm text-gray-500">${order.client_name} | ${new Date(order.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold">₹${Number(order.total_amount).toLocaleString()}</p>
+                        <p class="text-sm ${order.status === 'confirmed' ? 'text-green-600' : 'text-yellow-600'}">${order.status}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function loadClients() {
+            const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+            const container = document.getElementById('clientsList');
+            if (error) { container.innerHTML = '<p class="text-red-500">Error loading clients</p>'; return; }
+            if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No clients yet. Click "Add Client" to get started.</p>'; return; }
+            container.innerHTML = data.map(client => `
+                <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold">${client.company_name}</p>
+                        <p class="text-sm text-gray-500">${client.contact_name} | ${client.email || 'No email'}</p>
+                    </div>
+                    <div class="text-right">
+                        <button onclick="deleteClient(${client.id})" class="text-red-500 text-sm">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function loadMetalAccounts() {
+            const { data, error } = await supabase.from('metal_accounts').select('*');
+            const container = document.getElementById('metalList');
+            if (error) { container.innerHTML = '<p class="text-red-500">Error loading metal accounts</p>'; return; }
+            if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No metal accounts yet.</p>'; return; }
+            container.innerHTML = data.map(account => `
+                <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold">${account.account_type === 'factory' ? '🏭' : '👥'} ${account.factory_location || 'Client Account'}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-lg">${account.fine_gold_balance} g</p>
+                        <p class="text-sm text-gray-500">Fine Gold</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function loadStats() {
+            const { data: orders } = await supabase.from('orders').select('*');
+            const { data: products } = await supabase.from('products').select('*');
+            const { data: clients } = await supabase.from('clients').select('*');
+            const totalRevenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
+            document.getElementById('totalOrders').textContent = orders?.length || 0;
+            document.getElementById('totalRevenue').textContent = '₹' + totalRevenue.toLocaleString();
+            document.getElementById('totalProducts').textContent = products?.length || 0;
+            document.getElementById('totalClients').textContent = clients?.length || 0;
+        }
+        
+        // Tab switching
+        document.getElementById('tabProducts').onclick = () => {
+            document.getElementById('productsSection').classList.remove('hidden');
+            document.getElementById('ordersSection').classList.add('hidden');
+            document.getElementById('clientsSection').classList.add('hidden');
+            document.getElementById('metalSection').classList.add('hidden');
+        };
+        document.getElementById('tabOrders').onclick = () => {
+            document.getElementById('productsSection').classList.add('hidden');
+            document.getElementById('ordersSection').classList.remove('hidden');
+            document.getElementById('clientsSection').classList.add('hidden');
+            document.getElementById('metalSection').classList.add('hidden');
+        };
+        document.getElementById('tabClients').onclick = () => {
+            document.getElementById('productsSection').classList.add('hidden');
+            document.getElementById('ordersSection').classList.add('hidden');
+            document.getElementById('clientsSection').classList.remove('hidden');
+            document.getElementById('metalSection').classList.add('hidden');
+        };
+        document.getElementById('tabMetal').onclick = () => {
+            document.getElementById('productsSection').classList.add('hidden');
+            document.getElementById('ordersSection').classList.add('hidden');
+            document.getElementById('clientsSection').classList.add('hidden');
+            document.getElementById('metalSection').classList.remove('hidden');
+        };
+        
+        // Product Modal
+        const modal = document.getElementById('productModal');
+        document.getElementById('addProductBtn').onclick = () => {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+        document.getElementById('cancelProductBtn').onclick = () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+        document.getElementById('saveProductBtn').onclick = async () => {
+            const name = document.getElementById('productName').value;
+            const sku = document.getElementById('productSku').value;
+            const category = document.getElementById('productCategory').value;
+            const price = parseFloat(document.getElementById('productPrice').value);
+            const stock = parseInt(document.getElementById('productStock').value) || 0;
+            if (!name || !sku || !price) { alert('Please fill required fields'); return; }
+            const { error } = await supabase.from('products').insert([{ name, sku, category, price, stock_quantity: stock }]);
+            if (error) { alert('Error: ' + error.message); } else {
+                alert('Product added!');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.getElementById('productName').value = '';
+                document.getElementById('productSku').value = '';
+                document.getElementById('productPrice').value = '';
+                document.getElementById('productStock').value = '';
+                loadProducts();
+                loadStats();
+            }
+        };
+        
+        // Delete functions
+        window.deleteProduct = async (id) => {
+            if (confirm('Delete this product?')) {
+                await supabase.from('products').delete().eq('id', id);
+                loadProducts();
+                loadStats();
+            }
+        };
+        window.deleteClient = async (id) => {
+            if (confirm('Delete this client?')) {
+                await supabase.from('clients').delete().eq('id', id);
+                loadClients();
+                loadStats();
+            }
+        };
+        
+        // Logout
+        document.getElementById('logoutBtn').onclick = () => {
+            localStorage.removeItem('krj_user');
+            window.location.href = 'index.html';
+        };
+        
+        checkAuth();
+    </script>
+</body>
+</html>
