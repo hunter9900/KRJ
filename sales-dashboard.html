@@ -157,8 +157,8 @@
         
         function renderProducts(products) {
             const container = document.getElementById('productsGrid');
-            container.innerHTML = products.map(product => `
-                <div class="product-card bg-white rounded-xl shadow-sm overflow-hidden" onclick="addToCart(${product.id})">
+                 container.innerHTML = products.map(product => `
+                <div class="product-card bg-white rounded-xl shadow-sm overflow-hidden">
                     <div class="p-4">
                         <div class="text-3xl mb-2">
                             ${product.category === 'Ring' ? '💍' : product.category === 'Necklace' ? '📿' : product.category === 'Earrings' ? '👂' : '💎'}
@@ -169,7 +169,10 @@
                             <span class="text-xl font-bold text-blue-600">₹${Number(product.price).toLocaleString()}</span>
                             <span class="text-sm text-gray-500">Stock: ${product.stock_quantity}</span>
                         </div>
-                        <button class="w-full mt-3 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 transition">Add to Cart</button>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="addToCart(${product.id})" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 transition">Add to Cart</button>
+                            <button onclick="viewIn3D(${product.id}, '${product.name}', ${product.price})" class="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-purple-700 transition">3D</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -520,6 +523,9 @@
         
         // Initialize on page load
         init3DViewer();
+                function viewIn3D(id, name, price) {
+            window.location.href = `product-viewer.html?id=${id}&name=${encodeURIComponent(name)}&price=${price}`;
+        }
     </script>
 </body>
 </html>
