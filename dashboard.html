@@ -124,14 +124,14 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://llngjwyqyfppccdcwzgn.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsbmdqd3lxeWZwcGNjZGN3emduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTkyNTIsImV4cCI6MjA5MTQ5NTI1Mn0.s-YW4LcFcSizuuXbZ9PUAUPqoY-07fs9h03GQatdrMA';
+        // Using different variable names to avoid conflicts
+        const SB_URL = 'https://llngjwyqyfppccdcwzgn.supabase.co';
+        const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsbmdqd3lxeWZwcGNjZGN3emduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTkyNTIsImV4cCI6MjA5MTQ5NTI1Mn0.s-YW4LcFcSizuuXbZ9PUAUPqoY-07fs9h03GQatdrMA';
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const sbClient = window.supabase.createClient(SB_URL, SB_ANON_KEY);
         
         let currentUser = null;
         
-        // Check authentication
         async function checkAuth() {
             const userJson = localStorage.getItem('krj_user');
             if (!userJson) {
@@ -152,9 +152,9 @@
         }
         
         async function loadProducts() {
-            const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+            const { data, error } = await sbClient.from('products').select('*').order('created_at', { ascending: false });
             const container = document.getElementById('productsList');
-            if (error) { container.innerHTML = '<p class="text-red-500">Error loading products</p>'; return; }
+            if (error) { container.innerHTML = '<p class="text-red-500">Error loading products: ' + error.message + '</p>'; return; }
             if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No products yet. Click "Add Product" to get started.</p>'; return; }
             container.innerHTML = data.map(product => `
                 <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
@@ -171,7 +171,7 @@
         }
         
         async function loadOrders() {
-            const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+            const { data, error } = await sbClient.from('orders').select('*').order('created_at', { ascending: false });
             const container = document.getElementById('ordersList');
             if (error) { container.innerHTML = '<p class="text-red-500">Error loading orders</p>'; return; }
             if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No orders yet.</p>'; return; }
@@ -190,7 +190,7 @@
         }
         
         async function loadClients() {
-            const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+            const { data, error } = await sbClient.from('clients').select('*').order('created_at', { ascending: false });
             const container = document.getElementById('clientsList');
             if (error) { container.innerHTML = '<p class="text-red-500">Error loading clients</p>'; return; }
             if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No clients yet. Click "Add Client" to get started.</p>'; return; }
@@ -208,7 +208,7 @@
         }
         
         async function loadMetalAccounts() {
-            const { data, error } = await supabase.from('metal_accounts').select('*');
+            const { data, error } = await sbClient.from('metal_accounts').select('*');
             const container = document.getElementById('metalList');
             if (error) { container.innerHTML = '<p class="text-red-500">Error loading metal accounts</p>'; return; }
             if (!data || data.length === 0) { container.innerHTML = '<p class="text-gray-500">No metal accounts yet.</p>'; return; }
@@ -226,9 +226,9 @@
         }
         
         async function loadStats() {
-            const { data: orders } = await supabase.from('orders').select('*');
-            const { data: products } = await supabase.from('products').select('*');
-            const { data: clients } = await supabase.from('clients').select('*');
+            const { data: orders } = await sbClient.from('orders').select('*');
+            const { data: products } = await sbClient.from('products').select('*');
+            const { data: clients } = await sbClient.from('clients').select('*');
             const totalRevenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
             document.getElementById('totalOrders').textContent = orders?.length || 0;
             document.getElementById('totalRevenue').textContent = '₹' + totalRevenue.toLocaleString();
@@ -279,7 +279,7 @@
             const price = parseFloat(document.getElementById('productPrice').value);
             const stock = parseInt(document.getElementById('productStock').value) || 0;
             if (!name || !sku || !price) { alert('Please fill required fields'); return; }
-            const { error } = await supabase.from('products').insert([{ name, sku, category, price, stock_quantity: stock }]);
+            const { error } = await sbClient.from('products').insert([{ name, sku, category, price, stock_quantity: stock }]);
             if (error) { alert('Error: ' + error.message); } else {
                 alert('Product added!');
                 modal.classList.add('hidden');
@@ -293,23 +293,21 @@
             }
         };
         
-        // Delete functions
         window.deleteProduct = async (id) => {
             if (confirm('Delete this product?')) {
-                await supabase.from('products').delete().eq('id', id);
+                await sbClient.from('products').delete().eq('id', id);
                 loadProducts();
                 loadStats();
             }
         };
         window.deleteClient = async (id) => {
             if (confirm('Delete this client?')) {
-                await supabase.from('clients').delete().eq('id', id);
+                await sbClient.from('clients').delete().eq('id', id);
                 loadClients();
                 loadStats();
             }
         };
         
-        // Logout
         document.getElementById('logoutBtn').onclick = () => {
             localStorage.removeItem('krj_user');
             window.location.href = 'index.html';
