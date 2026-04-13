@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KRJ Products</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .product { background: white; border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>KRJ Products</h1>
+    <div id="products">Loading products...</div>
+
+    <script>
+        // Using different variable name to avoid conflict
+        const SB_URL = 'https://llngjwyqyfppccdcwzgn.supabase.co';
+        const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsbmdqd3lxeWZwcGNjZGN3emduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTkyNTIsImV4cCI6MjA5MTQ5NTI1Mn0.s-YW4LcFcSizuuXbZ9PUAUPqoY-07fs9h03GQatdrMA';
+        
+        // Create client with different name
+        const sbClient = window.supabase.createClient(SB_URL, SB_ANON_KEY);
+        
+        async function loadProducts() {
+            const container = document.getElementById('products');
+            
+            try {
+                // Use sbClient instead of supabase
+                const { data, error } = await sbClient.from('products').select('*');
+                
+                if (error) {
+                    container.innerHTML = '<p style="color:red">Error: ' + error.message + '</p>';
+                    console.error('Error:', error);
+                    return;
+                }
+                
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p>No products found. Please add products to the database.</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.map(p => `
+                    <div class="product">
+                        <strong>${p.name}</strong><br>
+                        SKU: ${p.sku}<br>
+                        Price: ₹${p.price}<br>
+                        Stock: ${p.stock_quantity}
+                    </div>
+                `).join('');
+                
+            } catch (err) {
+                container.innerHTML = '<p style="color:red">Exception: ' + err.message + '</p>';
+                console.error('Exception:', err);
+            }
+        }
+        
+        loadProducts();
+    </script>
+</body>
+</html>
