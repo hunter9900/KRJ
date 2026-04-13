@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRJ - My Account</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center flex-wrap gap-3">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">👑 KRJ Client Portal</h1>
+                    <p id="clientName" class="text-gray-500 mt-1">Loading...</p>
+                </div>
+                <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg">Logout</button>
+            </div>
+        </div>
+        
+        <!-- Metal Account Card -->
+        <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 mb-6 text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm opacity-90">Your Fine Gold Balance</p>
+                    <p id="goldBalance" class="text-3xl font-bold mt-1">0 g</p>
+                </div>
+                <div class="text-5xl">🪙</div>
+            </div>
+            <p class="text-xs opacity-75 mt-3">Metal account updated in real-time</p>
+        </div>
+        
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center gap-3">
+                    <div class="text-3xl">📦</div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Orders</p>
+                        <p id="totalOrders" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center gap-3">
+                    <div class="text-3xl">💰</div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Spent</p>
+                        <p id="totalSpent" class="text-2xl font-bold">₹0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Orders -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="p-6 border-b">
+                <h2 class="text-xl font-bold">Recent Orders</h2>
+            </div>
+            <div class="p-6">
+                <div id="ordersList" class="space-y-3">
+                    Loading orders...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SB_URL = 'https://llngjwyqyfppccdcwzgn.supabase.co';
+        const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsbmdqd3lxeWZwcGNjZGN3emduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTkyNTIsImV4cCI6MjA5MTQ5NTI1Mn0.s-YW4LcFcSizuuXbZ9PUAUPqoY-07fs9h03GQatdrMA';
+        
+        const sbClient = window.supabase.createClient(SB_URL, SB_ANON_KEY);
+        
+        let currentClient = null;
+        
+        async function checkAuth() {
+            const userJson = localStorage.getItem('krj_client');
+            if (!userJson) {
+                window.location.href = 'client-login.html';
+                return;
+            }
+            currentClient = JSON.parse(userJson);
+            document.getElementById('clientName').innerHTML = `Welcome, ${currentClient.name}`;
+            loadClientData();
+        }
+        
+        async function loadClientData() {
+            // Get client record
+            const { data: clientData } = await sbClient
+                .from('clients')
+                .select('*')
+                .eq('email', currentClient.email)
+                .single();
+            
+            // Get metal account
+            const { data: metalData } = await sbClient
+                .from('metal_accounts')
+                .select('*')
+                .eq('client_id', clientData?.id);
+            
+            if (metalData && metalData.length > 0) {
+                document.getElementById('goldBalance').textContent = metalData[0].fine_gold_balance + ' g';
+            } else {
+                document.getElementById('goldBalance').textContent = '0 g';
+            }
+            
+            // Get orders for this client
+            const { data: orders } = await sbClient
+                .from('orders')
+                .select('*')
+                .eq('client_email', currentClient.email)
+                .order('created_at', { ascending: false });
+            
+            const ordersContainer = document.getElementById('ordersList');
+            if (!orders || orders.length === 0) {
+                ordersContainer.innerHTML = '<p class="text-gray-500 text-center">No orders yet</p>';
+                document.getElementById('totalOrders').textContent = '0';
+                document.getElementById('totalSpent').textContent = '₹0';
+                return;
+            }
+            
+            const totalOrders = orders.length;
+            const totalSpent = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+            
+            document.getElementById('totalOrders').textContent = totalOrders;
+            document.getElementById('totalSpent').textContent = '₹' + totalSpent.toLocaleString();
+            
+            ordersContainer.innerHTML = orders.map(order => `
+                <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold">${order.order_number}</p>
+                        <p class="text-sm text-gray-500">${new Date(order.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold">₹${(order.total_amount || 0).toLocaleString()}</p>
+                        <p class="text-sm ${order.status === 'confirmed' ? 'text-green-600' : 'text-yellow-600'}">${order.status}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        document.getElementById('logoutBtn').onclick = () => {
+            localStorage.removeItem('krj_client');
+            window.location.href = 'client-login.html';
+        };
+        
+        checkAuth();
+    </script>
+</body>
+</html>
